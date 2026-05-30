@@ -1,40 +1,39 @@
-# 🌪️ GPGPU Organic Swarm — WebGPU Compute Shaders
+# 🎨 NPR Web Renderer — WebGPU Multi-Pass Post-Processing
 
-> **Simulación masiva de fluidos y partículas gestionada al 100% en la GPU mediante Compute Shaders y campos vectoriales (Curl Noise).**
+> **Arquitectura de renderizado de múltiples pasadas en WebGPU para aplicar técnicas de Renderizado No Fotorrealista (NPR), emulando estilos de dibujo tradicional en tiempo real.**
 
 🔗 **[Ver Demo en Vivo](https://pepeamoedo.com/MangaSketch/)**
 
 <img width="1024" height="924" alt="image" src="https://github.com/user-attachments/assets/d04dc407-a831-4d2f-969f-a719f2573b65" />
 
-## 🔬 Visión General
+## 🖌️ Visión General
 
-Este proyecto es una demostración de rendimiento bruto y matemáticas aplicadas utilizando el estándar **WebGPU**. El objetivo es mover +100,000 partículas simultáneamente a 60 FPS constantes en el navegador, descargando por completo a la CPU (JavaScript) y utilizando la GPU para el cálculo de físicas complejas.
+Este proyecto fusiona conceptos académicos de las Bellas Artes con la programación gráfica a bajo nivel. El objetivo es alejarse de la saturación del fotorrealismo en la web, implementando un motor capaz de tomar geometría 3D pura y procesarla para que parezca ilustrada a mano (estilo grabado, cómic o tinta).
 
-En lugar de movimientos lineales básicos, la simulación implementa **Curl Noise** para generar un campo vectorial dinámico, provocando que las partículas se comporten como un fluido orgánico que muta en el tiempo y reacciona a la interacción del usuario.
+Para lograr esto de forma eficiente y modular, el motor abandona el renderizado directo (Forward Rendering) en favor de una arquitectura de **Multi-Pass Rendering** (Renderizado en Múltiples Pasadas) utilizando WebGPU.
 
-## ⚙️ Arquitectura Técnica (GPGPU)
+## ⚙️ Arquitectura Técnica (Multi-Pass & Post-Processing)
 
-La simulación se divide en dos *pipelines* independientes ejecutados secuencialmente en cada fotograma:
+El *pipeline* gráfico se divide en pasadas secuenciales, utilizando texturas intermedias (*Render Targets*) en lugar de dibujar directamente en el lienzo del navegador.
 
-### 1. Compute Pipeline (Cálculo Físico)
-* **Storage Buffers:** Uso de buffers alineados en memoria (`std140`) para almacenar posiciones y velocidades (`vec4<f32>`), permitiendo el acceso de lectura y escritura directo desde la GPU.
-* **WGSL Compute Shader:** Ejecución paralela utilizando grupos de trabajo (`@workgroup_size(64)`).
-* **Matemáticas Orgánicas:** Implementación algorítmica de ruido 3D y *Curl Noise* dentro del shader. Al inyectar la variable de tiempo (`u_time`), el campo magnético evoluciona, creando vórtices y remolinos fluidos sin necesidad de keyframes.
-* **Físicas de Interacción:** Cálculo de vectores de repulsión entre las coordenadas proyectadas del ratón y la posición 3D de cada partícula.
+### 1. Fase de Renderizado Base (Pass 1)
+* **Framebuffers & Depth Textures:** La geometría de la escena (SDFs o mallas estáticas) se renderiza primero en una textura de color oculta (`texture_2d<f32>`) y se guarda su información espacial en un buffer de profundidad.
+* **Geometría Pura:** En esta fase no se aplican luces complejas ni materiales fotorealistas, optimizando el cálculo de los vértices y preparando el lienzo digital.
 
-### 2. Render Pipeline (Visualización)
-* **Vertex Fetching:** El *Render Shader* toma el buffer modificado por el *Compute Shader* directamente como datos de vértices, evitando costosas transferencias de memoria entre RAM y VRAM.
-* **Topología Eficiente:** Renderizado mediante `point-list` para maximizar los *draw calls*.
-* **Sombreado Dinámico:** La intensidad emisiva y el color de cada partícula se calculan en el *Fragment Shader* basándose en su velocidad actual (transferida desde el *Vertex Shader*), iluminando los vórtices más rápidos.
+### 2. Fase de Post-Procesado NPR (Pass 2)
+Se dibuja un *Full-Screen Quad* (un plano que ocupa toda la pantalla) y el *Fragment Shader* toma las texturas de la fase anterior para aplicar filtros matemáticos:
+* **Detección de Bordes (Sobel Filter):** Análisis matricial de los píxeles adyacentes para detectar cambios bruscos en la profundidad o el color, trazando contornos oscuros que simulan entintado tradicional.
+* **Cel-Shading (Cuantización de Color):** Compresión del rango dinámico de la luz en "bandas" duras y estilizadas, eliminando los degradados suaves de la iluminación digital de Lambert o Phong.
+* **Procedural Hatching (Tramado):** Algoritmos trigonométricos basados en las coordenadas de pantalla (`gl_FragCoord`) que dibujan patrones de líneas paralelas en las áreas de sombra, imitando el sombreado a bolígrafo o aguafuerte.
 
 ## 💻 Instalación y Desarrollo Local
 
-Proyecto construido sobre **Vite** para una compilación estática rápida y ligera.
+Proyecto modular construido con **Vite** para garantizar un entorno de desarrollo ultraligero.
 
 1.  **Clona el repositorio:**
     ```bash
-    git clone [https://github.com/pepeamoedo/gpgpu-organic-swarm.git](https://github.com/pepeamoedo/gpgpu-organic-swarm.git)
-    cd gpgpu-organic-swarm
+    git clone [https://github.com/pepeamoedo/npr-web-renderer.git](https://github.com/pepeamoedo/npr-web-renderer.git)
+    cd npr-web-renderer
     ```
 
 2.  **Instala las dependencias:**
@@ -42,16 +41,4 @@ Proyecto construido sobre **Vite** para una compilación estática rápida y lig
     npm install
     ```
 
-3.  **Inicia el servidor de desarrollo:**
-    ```bash
-    npm run dev
-    ```
-    *(Nota: WebGPU debe estar soportado y habilitado en tu navegador. Actualmente compatible con versiones recientes de Chrome, Edge y navegadores basados en Chromium).*
-
-## 🧠 Sobre el Autor
-
-**Pepe Amoedo** — *Technical 3D Artist & Frontend Developer*
-
-Aplicando una sólida formación en Bellas Artes a la arquitectura de software gráfico. Especializado en exprimir el rendimiento de la GPU en la web, la generación procedimental y el desarrollo de sistemas visuales donde el código actúa como un servicio para la estética y la experiencia interactiva.
-
-[Portafolio](https://pepeamoedo.com/) | [LinkedIn](https://www.linkedin.com/in/tu-perfil-aqui/)
+3.  **Inicia
