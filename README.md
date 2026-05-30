@@ -4,7 +4,7 @@
 
 🔗 **[Ver Demo en Vivo](https://pepeamoedo.com/MangaSketch/)**
 
-![Organic Swarm Cover](<img width="1024" height="924" alt="image" src="https://github.com/user-attachments/assets/d04dc407-a831-4d2f-969f-a719f2573b65" />)
+<img width="1024" height="924" alt="image" src="https://github.com/user-attachments/assets/d04dc407-a831-4d2f-969f-a719f2573b65" />
 
 ## 🔬 Visión General
 
