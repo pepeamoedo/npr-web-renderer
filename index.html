@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MangaSketch - WebGPU NPR Post-Processing Engine</title>
+  <!-- Modern Typographies from Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/src/style.css">
+</head>
+<body>
+
+  <!-- Background Canvas for WebGPU Output -->
+  <canvas id="webgpu-canvas"></canvas>
+
+  <!-- Title / Logo Header (Top Left) -->
+  <header class="app-header">
+    <div class="logo-container">
+      <div class="logo-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+        </svg>
+      </div>
+      <div class="logo-text">
+        <h1>MangaSketch</h1>
+        <span>Engine WebGPU NPR</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Sidebar UI - Controls panel -->
+  <main class="hud-container" id="control-panel">
+    <div class="hud-panel">
+      <!-- Section header -->
+      <div class="panel-header">
+        <div class="panel-title-group">
+          <h2>Panel de Control</h2>
+          <p>Ajustes de renderizado en tiempo real</p>
+        </div>
+        <button id="toggle-hud-btn" class="icon-btn" aria-label="Colapsar panel">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="9 18 15 12 9 6"></polyline>
+          </svg>
+        </button>
+      </div>
+
+      <div class="panel-body">
+        
+        <!-- Shape / Geometry selection -->
+        <section class="control-section">
+          <h3><span class="sec-num">01</span> Geometría 3D</h3>
+          <div class="shape-selector">
+            <button class="shape-btn active" data-shape="torusKnot">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                <path d="M2 12h20"></path>
+              </svg>
+              <span>Nudo Tórico</span>
+            </button>
+            <button class="shape-btn" data-shape="torus">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <ellipse cx="12" cy="12" rx="10" ry="5"></ellipse>
+                <ellipse cx="12" cy="12" rx="4" ry="2"></ellipse>
+              </svg>
+              <span>Toroide</span>
+            </button>
+            <button class="shape-btn" data-shape="sphere">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <path d="M8 12a4 4 0 1 0 8 0a4 4 0 1 0-8 0"></path>
+              </svg>
+              <span>Esfera</span>
+            </button>
+          </div>
+          <div class="control-group mt-3">
+            <div class="control-label-row">
+              <label for="rotation-speed">Velocidad de Rotación</label>
+              <span id="rotation-val" class="val-badge">1.0x</span>
+            </div>
+            <input type="range" id="rotation-speed" min="-2.0" max="2.0" step="0.1" value="1.0" class="custom-slider">
+          </div>
+        </section>
+
+        <!-- Lighting & Material -->
+        <section class="control-section">
+          <h3><span class="sec-num">02</span> Luz e Iluminación</h3>
+          <div class="control-group">
+            <div class="control-label-row">
+              <label for="light-yaw">Rotación Luz (Yaw)</label>
+              <span id="light-yaw-val" class="val-badge">45°</span>
+            </div>
+            <input type="range" id="light-yaw" min="0" max="360" step="1" value="45" class="custom-slider">
+          </div>
+          <div class="control-group">
+            <div class="control-label-row">
+              <label for="light-pitch">Elevación Luz (Pitch)</label>
+              <span id="light-pitch-val" class="val-badge">45°</span>
+            </div>
+            <input type="range" id="light-pitch" min="-90" max="90" step="1" value="45" class="custom-slider">
+          </div>
+          <div class="control-group">
+            <div class="control-label-row">
+              <label for="backlight-intensity">Intensidad Luz Trasera</label>
+              <span id="backlight-val" class="val-badge">0.28</span>
+            </div>
+            <input type="range" id="backlight-intensity" min="0.00" max="1.50" step="0.05" value="0.28" class="custom-slider">
+          </div>
+        </section>
+
+        <!-- Sobel Outline Settings -->
+        <section class="control-section">
+          <h3><span class="sec-num">03</span> Filtro Sobel (Bordes)</h3>
+          <div class="control-group">
+            <div class="control-label-row">
+              <label for="edge-depth">Sensibilidad de Profundidad</label>
+              <span id="edge-depth-val" class="val-badge">0.30</span>
+            </div>
+            <input type="range" id="edge-depth" min="0.01" max="1.50" step="0.01" value="0.30" class="custom-slider">
+            <span class="help-text">Umbral para detectar bordes por cambios de distancia 3D.</span>
+          </div>
+          <div class="control-group">
+            <div class="control-label-row">
+              <label for="edge-color">Sensibilidad de Color</label>
+              <span id="edge-color-val" class="val-badge">0.25</span>
+            </div>
+            <input type="range" id="edge-color" min="0.01" max="1.00" step="0.01" value="0.25" class="custom-slider">
+            <span class="help-text">Umbral para detectar bordes por cambios cromáticos o iluminación.</span>
+          </div>
+          <div class="control-group">
+            <div class="control-label-row">
+              <label for="edge-thickness">Grosor de Línea</label>
+              <span id="edge-thickness-val" class="val-badge">1.5px</span>
+            </div>
+            <input type="range" id="edge-thickness" min="0.5" max="3.0" step="0.1" value="1.5" class="custom-slider">
+          </div>
+        </section>
+
+        <!-- Cel Shading Options -->
+        <section class="control-section">
+          <h3><span class="sec-num">04</span> Cel Shading (Tonos)</h3>
+          <div class="control-group">
+            <div class="control-label-row">
+              <label for="cel-bands">Bandas de Color</label>
+              <span id="cel-bands-val" class="val-badge">3</span>
+            </div>
+            <input type="range" id="cel-bands" min="1" max="6" step="1" value="3" class="custom-slider">
+            <span class="help-text">Cantidad de niveles de iluminación dura (Comic-style).</span>
+          </div>
+          <div class="control-group">
+            <div class="control-label-row">
+              <label for="cel-smoothing">Suavizado de Bandas</label>
+              <span id="cel-smoothing-val" class="val-badge">0.05</span>
+            </div>
+            <input type="range" id="cel-smoothing" min="0.00" max="0.30" step="0.01" value="0.05" class="custom-slider">
+            <span class="help-text">Difumina los límites entre tonos para mitigar el aliasing en los bordes.</span>
+          </div>
+        </section>
+
+        <!-- Hatching (Tramado de Sombra) -->
+        <section class="control-section">
+          <h3><span class="sec-num">05</span> Grabado / Tramado (Hatching)</h3>
+          <div class="control-group">
+            <div class="checkbox-row">
+              <input type="checkbox" id="hatching-enabled" checked class="custom-checkbox">
+              <label for="hatching-enabled">Activar Tramado de Sombra</label>
+            </div>
+          </div>
+          <div class="control-group" id="hatching-controls">
+            <div class="control-label-row">
+              <label for="hatch-freq">Densidad de Líneas</label>
+              <span id="hatch-freq-val" class="val-badge">180</span>
+            </div>
+            <input type="range" id="hatch-freq" min="40" max="400" step="10" value="180" class="custom-slider">
+          </div>
+          <div class="control-group">
+            <div class="control-label-row">
+              <label for="hatch-weight">Grosor del Trazo</label>
+              <span id="hatch-weight-val" class="val-badge">0.45</span>
+            </div>
+            <input type="range" id="hatch-weight" min="0.10" max="0.90" step="0.05" value="0.45" class="custom-slider">
+          </div>
+          <div class="control-group">
+            <div class="control-label-row">
+              <label for="shadow-threshold">Umbral de Sombra</label>
+              <span id="shadow-threshold-val" class="val-badge">0.35</span>
+            </div>
+            <input type="range" id="shadow-threshold" min="0.05" max="0.75" step="0.05" value="0.35" class="custom-slider">
+            <span class="help-text">Intensidad luminosa por debajo de la cual empieza a aparecer el tramado.</span>
+          </div>
+          <div class="control-group">
+            <div class="checkbox-row">
+              <input type="checkbox" id="crosshatch-enabled" checked class="custom-checkbox">
+              <label for="crosshatch-enabled">Doble Trama en Sombra Extrema</label>
+            </div>
+            <span class="help-text">Dibuja tramas cruzadas en los puntos más oscuros de la geometría.</span>
+          </div>
+        </section>
+
+      </div>
+
+      <!-- Stats panel (Bottom of HUD) -->
+      <footer class="panel-footer">
+        <div class="stats-row">
+          <div class="stat-box">
+            <span class="stat-label">Rendimiento</span>
+            <span id="fps-counter" class="stat-value text-glow">60 FPS</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-label">Tiempo de Frame</span>
+            <span id="frame-time" class="stat-value">1.2 ms</span>
+          </div>
+        </div>
+        <div class="gpu-badge">
+          <span class="gpu-dot"></span>
+          <span id="gpu-info" class="gpu-text">Iniciando GPU...</span>
+        </div>
+      </footer>
+    </div>
+  </main>
+
+  <!-- Button to restore panel if collapsed -->
+  <button id="restore-hud-btn" class="hud-trigger-btn" hidden>
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M15 18l-6-6 6-6"></path>
+    </svg>
+    <span>Configuración</span>
+  </button>
+
+
+
+  <!-- Entry Script -->
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
